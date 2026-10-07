@@ -1,38 +1,54 @@
 /**
- * Name: FIRST_NAME LAST_NAME
+ * Name: JIAFU GUO
  * Course: CS-665 Software Designs & Patterns
- * Date: MM/DD/YYYY
+ * Date: 10/04/2026
  * File Name: Main.java
- * Description: Write a description for this class
+ * Description: Entry point of the program. Runs a short demo of the vending machine on the console.
+ * The real demonstration of the functionality is in the JUnit tests.
  */
 
 package edu.bu.met.cs665;
 
-import edu.bu.met.cs665.example1.Person;
+import edu.bu.met.cs665.beverage.Beverage;
+import edu.bu.met.cs665.beverage.GreenTea;
+import edu.bu.met.cs665.beverage.LatteMacchiato;
+import edu.bu.met.cs665.condiment.Milk;
+import edu.bu.met.cs665.condiment.Sugar;
+import edu.bu.met.cs665.machine.VendingMachine;
 
 /**
- * This is the Main class.
+ * Demo of two customers using the machine: a normal order, a rejected 4th unit of sugar.
+ * And the machine being ready for the next customer.
  */
 public class Main {
+    public static void main(String[] args) {
+        VendingMachine machine = new VendingMachine();
 
-  /**
-   * A main method to run examples.
-   * You may use this method for development purposes as you start building your
-   * assignments/final project.  This could prove convenient to test as you are developing.
-   * However, please note that every assignment/final projects requires JUnit tests.
-   */
-  public static void main(String[] args) {
-    System.out.println("This is a test message from the Main class (Main.java file)");
-  }
+        machine.selectBeverage(new LatteMacchiato());
+        machine.addCondiment(new Milk(), 1);
+        machine.addCondiment(new Sugar(), 3);
+        try {
+            machine.addCondiment(new Sugar(), 1);
+        } catch(IllegalArgumentException e) {
+            System.out.println("The machine shows: " + e.getMessage());
+        }
+        printOrder(machine.brew());
 
-  /**
-   * This method performs XYZ and returns String.
-   *
-   * @return String
-   */
-  private String doIt() {
-    Person student = new Person("John", "Doe");
-    return student.getLastName() + ',' + student.getFirstName();
-  }
+        machine.selectBeverage(new GreenTea());
+        printOrder(machine.brew());
+    }
+
+    /**
+     * Print the information about a finished drink.
+     *
+     * @param drink the beverage handed out by the machine
+     */
+    private static void printOrder(Beverage drink) {
+        System.out.println(drink.getCategory() + ": " + drink.getName());
+        System.out.println("    Brewing: " + drink.getBrewingProcess());
+        System.out.println("    Milk: " + drink.getCondimentUnits(new Milk()));
+        System.out.println("    Sugar: " + drink.getCondimentUnits(new Sugar()));
+        System.out.printf("    Price: $%.2f %n", drink.getPrice());
+    }
 
 }

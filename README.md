@@ -1,30 +1,134 @@
 
 | CS-665       | Software Design & Patterns |
 |--------------|----------------------------|
-| Name         | FIRST_NAME LAST_NAME       |
-| Date         | MM/DD/YYYY                 |
-| Course       | Fall / Spring / Summer     |
-| Assignment # |                            |
+| Name         | Jiafu Guo                  |
+| Date         | 10/06/2026                 |
+| Course       | Fall 2026                  |
+| Assignment # | 1                          |
 
 # Assignment Overview
-Please add a paragraph or two overviewing the objectives of the assignment.
+
+This project is the control software of a fully automatic beverage vending machine. The
+machine prepares six drinks, three coffees (Espresso, Americano, Latte Macchiato) and
+three teas (Black Tea, Green Tea, Yellow Tea), and lets the customer add two condiments,
+milk and sugar, with 0 to 3 units of each per drink. The software also calculates the final
+price of a drink from a base price plus a price per condiment unit (the optional task).
+
+There is no graphical or command line user interface. The user interactions are implemented
+as sequences of JUnit tests, as required by the assignment. `Main` only runs a short console
+demo.
 
 # GitHub Repository Link:
-https://github.com/{YOUR_USERNAME}/cs-665-assignment-{ASSIGNMENT_NUMBER}
+https://github.com/guojiafu-jeff/cs-665-assignment-1
 
-# Implementation Description 
+# Implementation Description
+
+## Design overview
+
+The code is organized in three packages that mirror the three concepts of the problem:
+
+| Package | Classes | Responsibility |
+|---|---|---|
+| `edu.bu.met.cs665.condiment` | `Condiment` (abstract), `Milk`, `Sugar` | A kind of condiment: its name and its price per unit. |
+| `edu.bu.met.cs665.beverage` | `Beverage` (abstract), `Coffee` (abstract), `Tea` (abstract), `Espresso`, `Americano`, `LatteMacchiato`, `BlackTea`, `GreenTea`, `YellowTea` | A drink: name, base price, the condiments added to it, the 0-3 rule and the price calculation. |
+| `edu.bu.met.cs665.machine` | `VendingMachine` | The control panel the user operates: select a beverage, add condiments, brew. |
+
+All operations of the machine go through `VendingMachine`. The user only creates the drink
+and condiment objects to say what they want (for example `new Espresso()`, `new Milk()`)
+and reads the finished `Beverage` returned by `brew()`:
 
 
-For each assignment, please answer the following:
 
-- Explain the level of flexibility in your implementation, including how new object types can
-be easily added or removed in the future.
-- Discuss the simplicity and understandability of your implementation, ensuring that it is
-easy for others to read and maintain.
-- Describe how you have avoided duplicated code and why it is important.
-- If applicable, mention any design patterns you have used and explain why they were
-chosen.
+How the classes work together:
 
+- `Beverage` is the abstract base of every drink. It stores the name, the base price and a
+  list with one `Condiment` object per unit added. `addCondiment()` is the only place where
+  the condiment rule is checked; `getPrice()` adds the unit price of every condiment in the
+  list to the base price. `getBrewingProcess()` and `getCategory()` are abstract.
+- `Coffee` and `Tea` are abstract category classes. They implement `getCategory()` once for
+  all drinks of their category; a customer never orders "a coffee" in general.
+- The six concrete drinks only supply their name, their base price and their brewing process.
+- `Condiment` is the abstract base of `Milk` and `Sugar`. A `Condiment` object describes a
+  kind of condiment (name, unit price); it does not store an amount. `isSameKindAs()` is used
+  by `Beverage` to count the units of one kind.
+- `VendingMachine` remembers the beverage of the current order, enforces the order of the
+  operations (select, then add condiments, then brew) and resets itself after `brew()` so it
+  is ready for the next customer. It works only with the abstract types `Beverage` and
+  `Condiment`.
+
+Invalid requests are reported with exceptions, so the caller cannot overlook them:
+`IllegalArgumentException` for a bad argument (null, negative units, more than 3 units of a
+condiment) and `IllegalStateException` for a wrong order of operations (adding a condiment or
+brewing before a beverage is selected). A rejected request leaves the drink and the machine
+unchanged, so the order can continue. The JUnit tests check these cases; `Main` shows how a
+caller catches the exception and prints the message of the machine.
+
+## Assumptions
+
+1. The machine offers exactly six drinks: Espresso, Americano, Latte Macchiato, Black Tea,
+   Green Tea and Yellow Tea.
+2. Each drink has its own base price: Espresso \$2.00, Americano \$2.50, Latte Macchiato \$3.00,
+   Black Tea \$1.50, Green Tea \$1.50, Yellow Tea \$2.00. Every condiment unit costs \$0.50.
+3. The condiments are milk and sugar. A drink may contain 0 to 3 units of each, counted over
+   all requests of an order and counted separately for each condiment, so a drink can have at
+   most 3 + 3 = 6 units. A request that would exceed the limit is rejected with an exception
+   and is not silently cut down to 3.
+4. The machine handles one order at a time. After `brew()` it is reset for the next customer.
+   Selecting a beverage again while an order is in progress replaces the previous choice,
+   including the condiments already added to it.
+5. Ingredients in the vending machine are considered unlimited (assume it's refilled by an operator).
+6. There is no real hardware, so the brewing process of a drink is represented by a text
+   description returned by `getBrewingProcess()`.
+
+## Flexibility
+
+- A new drink is one new subclass of `Coffee` or `Tea` with its name, base price and brewing
+  process; no existing file changes. Removing a drink means deleting one file.
+- A new condiment (for example oat milk) is one new subclass of `Condiment`; no existing file
+  changes.
+- A new category of drinks (for example hot chocolate) is one new subclass of `Beverage`.
+- `VendingMachine` depends only on the abstract types `Beverage` and `Condiment`, so it never
+  changes when drinks or condiments are added or removed.
+- The condiment limit is a single constant, `Beverage.MAX_UNITS_PER_CONDIMENT`; prices are
+  constants in the drink and condiment classes.
+
+## Simplicity and understandability
+
+- Three packages mirror the three concepts of the problem: condiment, beverage, machine.
+- Each class has one job, and the class and method names read like the problem statement:
+  `selectBeverage`, `addCondiment`, `brew`.
+- The user-facing API is three methods on one class; the tests read like a customer using the
+  machine.
+- Every file and every method has a documentation comment that says what it does and where it
+  is used.
+
+## Avoiding duplicated code
+
+- The condiment limit and the price formula exist once, in `Beverage`. `VendingMachine`
+  delegates to the beverage instead of checking again, and every drink inherits the rule.
+- Each concrete drink states its name and base price in exactly one place, its constructor;
+  `Coffee` and `Tea` implement `getCategory()` once for all drinks of their category.
+- The "same kind of condiment" comparison exists once, in `Condiment.isSameKindAs()`.
+- In `VendingMachine`, the check that a beverage has been selected is one private method,
+  `requireSelection()`, used by `addCondiment()` and `brew()`.
+
+Why this matters: a rule that lives in one place can be changed in one place (for example a
+new limit of 4 units), behaves the same everywhere, and has one place to test, which means
+fewer bugs.
+
+## Design patterns
+
+No design pattern was applied in this assignment.
+
+## Use of AI assistance
+
+I used Claude to help me write PlantUML code to get a clear UML graph. It also helped me to format the readme file.
+
+# UML Class Diagram
+
+![UML class diagram](uml/UML.png)
+
+The same diagram as a PDF: [uml/UML.pdf](uml/UML.pdf).
 
 # Maven Commands
 
@@ -47,7 +151,12 @@ Type on the command line:
 mvn clean compile
 ```
 
+## Run the demo
+`Main` runs a short console demo (two customers, including a rejected 4th unit of sugar):
 
+```bash
+mvn compile exec:java
+```
 
 ## JUnit Tests
 JUnit is a popular testing framework for Java. JUnit tests are automated tests that are written to verify that the behavior of a piece of code is as expected.
@@ -65,6 +174,8 @@ To run, use the following command:
 mvn clean test
 ```
 
+The tests of this assignment are `src/test/java/edu/bu/met/cs665/TestBeverage.java` and
+`src/test/java/edu/bu/met/cs665/TestVendingMachine.java`.
 
 ## Spotbugs 
 
@@ -106,7 +217,3 @@ mvn checkstyle:checkstyle
 
 The HTML page will be found at the following location:
 `target/site/checkstyle.html`
-
-
-
-
